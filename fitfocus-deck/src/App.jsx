@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 // ── DATA (real, from FitFocus_Sales_Tracker_SOC_latest.xlsx, through 2 Jul 2026) ──
@@ -60,6 +60,7 @@ const T = {
 const DISPLAY_FONT = "'Archivo Black', 'Arial Narrow', 'Helvetica Neue', sans-serif";
 const BODY_FONT = "'Inter', -apple-system, 'Segoe UI', sans-serif";
 const MONO_FONT = "'IBM Plex Mono', ui-monospace, 'SF Mono', monospace";
+
 
 const SLIDES = [
   "Cover", "Opportunity", "Why Protein", "Why FitFocus", "Results",
@@ -455,26 +456,114 @@ function OperatingSystemSlide() {
   );
 }
 
-// 8 — CURRENT PARTNERS (logo capsules, minimal text)
+// 8 — CURRENT PARTNERS
+// Vertical wheel picker — like an iOS date-picker reel. The centered item is
+// bold and full opacity; items above/below fade and shrink with distance
+// from center. Auto-cycles on an interval and loops forever.
+function WheelPicker({ items, holdMs = 1200, itemHeight = 76 }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setIndex(i => (i + 1) % items.length);
+    }, holdMs);
+    return () => clearInterval(t);
+  }, [items.length, holdMs]);
+
+  // Distance-based style: 0 = center (bold/full), 1 = neighbor (faded/small),
+  // 2+ = further out (barely visible). Wraps around the list circularly.
+  const styleFor = (dist) => {
+    const d = Math.min(dist, 2);
+    return [
+      { opacity: 1,    scale: 1,    color: T.ink,  weight: 1 },
+      { opacity: 0.3,  scale: 0.7,  color: T.ink40, weight: 0 },
+      { opacity: 0.1,  scale: 0.52, color: T.ink40, weight: 0 },
+    ][d];
+  };
+
+  // Brief squish pulse right after each snap — settles back to normal scale,
+  // giving the sense of the reel physically absorbing momentum on arrival.
+  const [justSettled, setJustSettled] = useState(false);
+  useEffect(() => {
+    setJustSettled(true);
+    const t = setTimeout(() => setJustSettled(false), 260);
+    return () => clearTimeout(t);
+  }, [index]);
+
+  const n = items.length;
+
+  return (
+    <div style={{
+      position: "relative", height: itemHeight * 3, overflow: "hidden",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    }}>
+      {/* center highlight band — the "window" the reel is read through, seamless
+          neutral wash rather than a boxed/bordered shape */}
+      <div style={{
+        position: "absolute", top: itemHeight, left: 0, right: 0, height: itemHeight,
+        background: `linear-gradient(90deg, ${T.paperD}00 0%, ${T.paperD} 50%, ${T.paperD}00 100%)`,
+        transition: "opacity 0.3s ease",
+      }} />
+
+      {items.map((label, i) => {
+        let offset = i - index;
+        if (offset > n / 2) offset -= n;
+        if (offset < -n / 2) offset += n;
+        if (Math.abs(offset) > 2) return null;
+
+        const s = styleFor(Math.abs(offset));
+        const isCenter = offset === 0;
+        const squish = isCenter && justSettled ? "scaleY(0.9)" : "scaleY(1)";
+        return (
+          <div key={label} style={{
+            position: "absolute", top: "50%", left: 0, right: 0, textAlign: "center",
+            transform: `translateY(${offset * itemHeight - itemHeight / 2}px) scale(${s.scale}) ${squish}`,
+            transition: "transform 0.65s cubic-bezier(0.34, 1.1, 0.64, 1), opacity 0.5s ease",
+            opacity: s.opacity,
+            fontFamily: DISPLAY_FONT, fontSize: 38, letterSpacing: "-1.5px", fontWeight: 900,
+            color: s.color,
+            height: itemHeight, display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: isCenter ? 2 : 1,
+          }}>
+            {label}
+          </div>
+        );
+      })}
+
+      {/* fade masks — top/bottom of the window dissolve into the frame edge
+          rather than cutting off hard */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: itemHeight * 0.95, zIndex: 2,
+        background: `linear-gradient(to bottom, ${T.paper} 0%, ${T.paper}00 100%)`,
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: itemHeight * 0.95, zIndex: 2,
+        background: `linear-gradient(to top, ${T.paper} 0%, ${T.paper}00 100%)`,
+        pointerEvents: "none",
+      }} />
+    </div>
+  );
+}
+
 function PartnersSlide() {
   const partners = ["ARC", "RPM", "AFC", "MAHABODHI", "GMP"];
   return (
     <div style={{ minHeight: "100vh", padding: "64px 32px 110px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
       <Eyebrow>08 — Our Current Partners</Eyebrow>
       <H1>Trusted by gyms<br /><span style={{ color: T.pink }}>across Solo.</span></H1>
-      <div style={{ height: 24 }} />
+      <div style={{ height: 32 }} />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 0, borderTop: `1.5px solid ${T.ink}` }}>
-        {partners.map(p => (
-          <div key={p} style={{ padding: "22px 4px", borderBottom: `1px solid ${T.line}`,
-            fontFamily: DISPLAY_FONT, fontSize: 26, color: T.ink, letterSpacing: "-0.5px" }}>
-            {p}
-          </div>
-        ))}
+      <WheelPicker items={partners} />
+
+      <div style={{ marginTop: 16, fontFamily: MONO_FONT, fontSize: 10, color: T.ink40,
+        letterSpacing: 1, textTransform: "uppercase", textAlign: "center" }}>
+        {partners.length} active gym partners
       </div>
     </div>
   );
 }
+
 
 // 9 — GROWTH ROADMAP
 function RoadmapSlide() {
