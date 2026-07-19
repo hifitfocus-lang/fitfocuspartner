@@ -547,7 +547,7 @@ function WheelPicker({ items, holdMs = 1200, itemHeight = 76 }) {
 }
 
 function PartnersSlide() {
-  const partners = ["ARC", "RPM", "AFC", "MAHABODHI", "GMP"];
+  const partners = ["ARC", "RPM", "AFC", "MAHABODHI", "GMP", "NEOFIT", "JASFIT"];
   return (
     <div style={{ minHeight: "100vh", padding: "64px 32px 110px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
       <Eyebrow>08 — Our Current Partners</Eyebrow>
